@@ -3,11 +3,24 @@
 #include <QTcpSocket>
 #include <QtEndian>
 #include <QApplication>
+#include <QStringList>
+#include <QString>
 #include <QDebug>
 
 MouseSocket::MouseSocket(QObject* parent) : QObject(parent) {
 	sock = new QTcpSocket();
-	sock->connectToHost("192.168.99.33", 33333);
+	QString host = "127.0.0.1";
+	QStringList args = QApplication::arguments();
+	for(int i = 0 ; i < args.size() ; i++) {
+		if (args[i] == "--server") {
+			i++;
+			if (i < args.size()) {
+				host = args[i];
+				qDebug() << "Using server" << host;
+			}
+		}
+	}
+	sock->connectToHost(host, 33333);
 	QObject::connect(sock, SIGNAL(readyRead()),
 		this, SLOT(haveData()));
 	QObject::connect(sock, SIGNAL(connected()),

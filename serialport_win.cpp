@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <QString>
 #include <QByteArray>
+#include <QApplication>
 
 SerialPort::SerialPort(QObject* parent) : QObject(parent) {
 	opened = false;
@@ -13,13 +14,31 @@ SerialPort::~SerialPort() {
 	}
 }
 
-bool SerialPort::open(int index) {
-	qDebug() << QString("SerialPort::open(%1) called").arg(index);
+bool SerialPort::open() {
+	qDebug() << "SerialPort::open() called";
 	if (opened == true) {
 		// Can't open an already-open serial port
 		return false;
 	}
-	path = QString("\\\\.\\COM%1").arg(index);
+	// Use COM1 by default.
+	path = QString("\\\\.\\COM1");
+	// Check command line for serial port override
+	QStringList args = QApplication::arguments();
+	for(int i = 0 ; i < args.size() ; i++) {
+		if (args[i] == "--serial") {
+			i++;
+			if (i < args.size()) {
+				path = args[i];
+				// We expect either the canonical path "\\.\COM1"
+				// or simply "COM1" here
+				if (!path.startsWith("\\\\.\\")) {
+					path = path.prepend("\\\\.\\");
+				}
+			}
+		}
+	}
+	qDebug() << "Using serial port" << path;
+
 	hSerial = CreateFile((const WCHAR*)(path.utf16()), GENERIC_READ | GENERIC_WRITE,
 			0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 	if (hSerial == INVALID_HANDLE_VALUE) {

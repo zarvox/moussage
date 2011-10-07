@@ -2,6 +2,8 @@
 #include <QDebug>
 #include <QString>
 #include <QByteArray>
+#include <QApplication>
+#include <QStringList>
 
 #include <termios.h>
 #include <fcntl.h>
@@ -21,13 +23,29 @@ SerialPort::~SerialPort() {
 }
 
 void signal_handler_IO(int status) {
+	Q_UNUSED(status)
 	// Do nothing.  We basically ignore SIGIO. :/
 }
 
-bool SerialPort::open(int index) {
-	qDebug() << QString("SerialPort::open(%1) called").arg(index);
+bool SerialPort::open() {
+	qDebug() << "SerialPort::open() called";
 	
-	path = QString("/dev/ttyUSB%1").arg(index);
+	path = QString("/dev/ttyUSB0");
+
+	QStringList args = QApplication::arguments();
+	for(int i = 0 ; i < args.size() ; i++) {
+		if (args[i] == "--serial") {
+			i++;
+			if (i < args.size()) {
+				// We expect the full path to the device node here.
+				path = args[i];
+			}
+		}
+	}
+	qDebug() << "Using serial port" << path;
+
+
+
 	/* try to open the serial port */
 	struct termios oldtio, newtio;
 	
@@ -77,4 +95,6 @@ void SerialPort::close() {
 
 QByteArray SerialPort::read() {
 	// Unimplemented.
+	QByteArray retval;
+	return retval;
 }

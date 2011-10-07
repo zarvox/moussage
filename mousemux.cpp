@@ -13,7 +13,7 @@ MouseMux::MouseMux(QObject* parent) : QObject(parent) {
 	
 	// Init the serial port we'll talk to the Arduino over.
 	sp = new SerialPort();
-	serial_enabled = sp->open(3);
+	serial_enabled = sp->open();
 }
 
 MouseMux::~MouseMux() {

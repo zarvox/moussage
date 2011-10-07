@@ -15,7 +15,7 @@ class SerialPort : public QObject {
 public:
 	SerialPort(QObject* parent = NULL);
 	~SerialPort();
-	bool open(int index = 0);
+	bool open();
 	void close();
 public slots:
 	int write(QByteArray data);
