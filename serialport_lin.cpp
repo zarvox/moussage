@@ -8,7 +8,13 @@
 #include <termios.h>
 #include <fcntl.h>
 #include <unistd.h>
+
+#ifdef __linux__
 #include <sys/signal.h>
+#else // __APPLE__
+#include <signal.h>
+#endif
+
 #include <sys/types.h>
 
 SerialPort::SerialPort(QObject* parent) : QObject(parent) {
@@ -30,7 +36,13 @@ void signal_handler_IO(int status) {
 bool SerialPort::open() {
 	qDebug() << "SerialPort::open() called";
 	
+#ifdef __linux__
 	path = QString("/dev/ttyUSB0");
+#endif
+
+#ifdef APPLE
+	path = QString("/dev/ttyUSB0");
+#endif
 
 	QStringList args = QApplication::arguments();
 	for(int i = 0 ; i < args.size() ; i++) {
@@ -54,7 +66,9 @@ bool SerialPort::open() {
 	saio.sa_handler = signal_handler_IO;
 	sigemptyset(&saio.sa_mask);
 	saio.sa_flags = 0;
+#ifdef __linux__
 	saio.sa_restorer = NULL;
+#endif
 	sigaction(SIGIO, &saio, NULL);
 
 	serial_handle = ::open(path.toLatin1(), O_RDWR | O_NOCTTY | O_NONBLOCK);
