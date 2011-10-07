@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <QString>
 #include <QByteArray>
+#include <QStringList>
 #include <QApplication>
 
 SerialPort::SerialPort(QObject* parent) : QObject(parent) {
