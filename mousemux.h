@@ -4,10 +4,14 @@
 #include <QObject>
 #include <QByteArray>
 #include <QMap>
+#include <QList>
+#include <QPair>
+#include <QDateTime>
 
 class MouseWidget;
 class QPushButton;
 class SerialPort;
+class QTimer;
 
 class MouseMux : public QObject {
 	Q_OBJECT
@@ -16,11 +20,19 @@ public:
 	~MouseMux();
 public slots:
 	void imageUpdate(qint64 id, QByteArray data);
+	void timerTick();
 private:
+	void expireOlderThan(int msecs);
+	void writeHistoryAverage();
+
+
 	QMap<qint64, MouseWidget*> widgetMap;
 	QPushButton* pb;
 	SerialPort* sp;
 	bool serial_enabled;
+	QList<QPair<QDateTime, QByteArray> >history;
+	QTimer* timer;
+	QByteArray lastsent;
 };
 
 #endif // __MOUSEMUX_H__

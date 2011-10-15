@@ -4,6 +4,9 @@
 #include <QPushButton>
 #include <QApplication>
 #include "serialport.h"
+#include <QTimer>
+
+#define AVG_PERIOD (100)
 
 MouseMux::MouseMux(QObject* parent) : QObject(parent) {
 	pb = new QPushButton("Quit");
@@ -11,12 +14,24 @@ MouseMux::MouseMux(QObject* parent) : QObject(parent) {
 	QObject::connect(pb, SIGNAL(clicked()),
 				qApp, SLOT(quit()));
 
+	timer = new QTimer(this);
+	QObject::connect(timer, SIGNAL(timeout()),
+				this, SLOT(timerTick()));
+	timer->start(8);
 	// Init the serial port we'll talk to the Arduino over.
 	sp = new SerialPort();
 	serial_enabled = sp->open();
 }
 
 MouseMux::~MouseMux() {
+}
+
+
+void MouseMux::timerTick() {
+	// Prune history older than AVG_PERIOD msec
+	expireOlderThan(AVG_PERIOD);
+	// Take average of the (remaining) history, write to serial port
+	writeHistoryAverage();
 }
 
 static int region(QByteArray data, int rowbegin, int colbegin, int rowend, int colend) {
@@ -46,9 +61,8 @@ void MouseMux::imageUpdate(qint64 id, QByteArray data) {
 	}
 	widgetMap[id]->updateImage(data);
 	if (serial_enabled) {
-		qDebug() << "Writing to serial";
-		QByteArray serialdata;
-		serialdata.resize(12);
+		QByteArray motorthisframe;
+		motorthisframe.resize(12);
 		// do something to map from image to LED brightness
 		// Zones are numbered: 
 		//       0 6
@@ -56,21 +70,53 @@ void MouseMux::imageUpdate(qint64 id, QByteArray data) {
 		//       2 8
 		//       3 9
 		//   5   4 10  11		
-		serialdata[0] = (char)region(data, 0, 3, 2, 7);
-		serialdata[1] = (char)region(data, 3, 3, 5, 7);
-		serialdata[2] = (char)region(data, 5, 3, 7, 7);
-		serialdata[3] = (char)region(data, 7, 3, 9, 7);
-		serialdata[4] = (char)region(data, 10, 3, 12, 7);
-		serialdata[5] = (char)region(data, 10, 0, 12, 3);
-		serialdata[6] = (char)region(data, 0, 7, 2, 11);
-		serialdata[7] = (char)region(data, 3, 7, 5, 11);
-		serialdata[8] = (char)region(data, 5, 7, 7, 11);
-		serialdata[9] = (char)region(data, 7, 7, 9, 11);
-		serialdata[10] = (char)region(data, 10, 7, 12, 11);
-		serialdata[11] = (char)region(data, 10, 11, 12, 14);
-		
+		motorthisframe[0] = (char)region(data, 0, 3, 2, 7);
+		motorthisframe[1] = (char)region(data, 3, 3, 5, 7);
+		motorthisframe[2] = (char)region(data, 5, 3, 7, 7);
+		motorthisframe[3] = (char)region(data, 7, 3, 9, 7);
+		motorthisframe[4] = (char)region(data, 10, 3, 12, 7);
+		motorthisframe[5] = (char)region(data, 10, 0, 12, 3);
+		motorthisframe[6] = (char)region(data, 0, 7, 2, 11);
+		motorthisframe[7] = (char)region(data, 3, 7, 5, 11);
+		motorthisframe[8] = (char)region(data, 5, 7, 7, 11);
+		motorthisframe[9] = (char)region(data, 7, 7, 9, 11);
+		motorthisframe[10] = (char)region(data, 10, 7, 12, 11);
+		motorthisframe[11] = (char)region(data, 10, 11, 12, 14);
+		QDateTime now = QDateTime::currentDateTime();
+		history.append(qMakePair(now, motorthisframe));
+	}
+}
+
+void MouseMux::expireOlderThan(int msecs) {
+	QDateTime now = QDateTime::currentDateTime();
+	QList<int> to_remove;
+	for (int i = 0 ; i < history.size(); i++) {
+		if(history[i].first.msecsTo(now) > msecs)
+			to_remove.append(i);
+	}
+	for (int i = to_remove.size() - 1 ; i >= 0 ; i--) {
+		history.removeAt(to_remove[i]);
+	}
+}
+
+void MouseMux::writeHistoryAverage() {
+	QByteArray serialdata;
+	serialdata.resize(12);
+	for (int motor = 0; motor < 12; motor++ ) {
+		int total = 0;
+		for(int i = 0; i < history.size() ; i++) {
+			total += history[i].second[motor];
+		}
+		if (history.size() > 0)
+			total /= history.size();
+		int CLAMP = 127;
+		serialdata[motor] = total > CLAMP ? (char)(CLAMP): (char)total;
+	}
+	if (serialdata != lastsent) {
+		qDebug() << "taking average of" << history.size() << "samples";
 		int written = sp->write(serialdata);
-		qDebug() << written << "byte written";
-		//qDebug() << sp->write("Test\n");
+		qDebug() << serialdata.toHex();
+		//qDebug() << written << "bytes written";
+		lastsent = serialdata;
 	}
 }
