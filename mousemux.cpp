@@ -58,6 +58,8 @@ void MouseMux::imageUpdate(qint64 id, QByteArray data) {
 		widgetMap.insert(id, new MouseWidget());
 		widgetMap[id]->resize(15 * 16, 13 * 16);
 		widgetMap[id]->show();
+		QObject::connect(widgetMap[id], SIGNAL(clicked()),
+				this, SLOT(reset()));
 	}
 	widgetMap[id]->updateImage(data);
 	if (serial_enabled) {
@@ -113,10 +115,19 @@ void MouseMux::writeHistoryAverage() {
 		serialdata[motor] = total > CLAMP ? (char)(CLAMP): (char)total;
 	}
 	if (serialdata != lastsent) {
+		lastsent = serialdata;
 		qDebug() << "taking average of" << history.size() << "samples";
+		serialdata = serialdata.prepend((char)0);
 		int written = sp->write(serialdata);
 		qDebug() << serialdata.toHex();
 		//qDebug() << written << "bytes written";
-		lastsent = serialdata;
 	}
+}
+
+void MouseMux::reset() {
+	qDebug() << "resetting power supply";
+	QByteArray ba;
+	ba.resize(1);
+	ba[0] = 1;
+	sp->write(ba);
 }

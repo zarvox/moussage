@@ -21,6 +21,7 @@ public:
 public slots:
 	void imageUpdate(qint64 id, QByteArray data);
 	void timerTick();
+	void reset();
 private:
 	void expireOlderThan(int msecs);
 	void writeHistoryAverage();

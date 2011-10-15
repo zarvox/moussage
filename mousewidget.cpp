@@ -2,6 +2,7 @@
 #include <QPainter>
 #include <QPaintEvent>
 #include <QDebug>
+#include <QMouseEvent>
 
 MouseWidget::MouseWidget(QWidget* parent) : QWidget(parent) {
 	lastImage.resize(195);
@@ -9,6 +10,11 @@ MouseWidget::MouseWidget(QWidget* parent) : QWidget(parent) {
 
 MouseWidget::~MouseWidget() {
 
+}
+
+void MouseWidget::mouseReleaseEvent(QMouseEvent* e) {
+	qDebug() << "clicked";
+	emit clicked();
 }
 
 void MouseWidget::paintEvent(QPaintEvent* e) {

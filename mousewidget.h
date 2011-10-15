@@ -5,6 +5,7 @@
 #include <QByteArray>
 
 class QPaintEvent;
+class QMouseEvent;
 
 class MouseWidget : public QWidget {
 	Q_OBJECT
@@ -14,7 +15,10 @@ public:
 public slots:
 	void updateImage(QByteArray data);
 	void paintEvent(QPaintEvent* e);
+signals:
+	void clicked();
 private:
+	void mouseReleaseEvent(QMouseEvent* e);
 	QByteArray lastImage;
 };
 
